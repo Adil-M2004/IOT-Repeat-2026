@@ -12,7 +12,7 @@ pnconfig = PNConfiguration()
 pnconfig.subscribe_key = app.config['PUBNUB_SUBSCRIBE_KEY']
 pnconfig.publish_key = app.config['PUBNUB_PUBLISH_KEY']
 pnconfig.secret_key = app.config['PUBNUB_SECRET_KEY']
-pnconfig.cipher_key = app.config['PUBNUB_CIPHER_KEY']  # Payload AES Encryption
+pnconfig.cipher_key = app.config['PUBNUB_CIPHER_KEY']
 pnconfig.uuid = "flask-backend-server"
 
 pubnub = PubNub(pnconfig)
@@ -21,7 +21,6 @@ pubnub = PubNub(pnconfig)
 def index():
     return render_template('index.html')
 
-# Security Endpoint: Issue Access Tokens (PAM) to hardware devices
 @app.route('/api/get-device-token', methods=['GET'])
 def get_device_token():
     try:
@@ -32,7 +31,7 @@ def get_device_token():
                 Channel.id("sensor-data").read().write()
             ]) \
             .sync()
-        
+
         token = envelope.result.token
         return jsonify({"status": "success", "token": token}), 200
     except Exception as e:

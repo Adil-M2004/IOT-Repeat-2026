@@ -12,24 +12,14 @@
     <div class="container">
         <h1 class="mb-4 text-center">IoT Real-Time Telemetry Dashboard</h1>
         
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="card bg-secondary text-white border-light">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Temperature</h5>
-                        <h2 class="display-4"><span id="temp-val">--</span> °C</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <div class="card bg-secondary text-white border-light">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Light Level</h5>
-                        <h2 class="display-4"><span id="light-val">--</span> Lux</h2>
-                    </div>
-                </div>
-            </div>
+       <div class="col-md-6 mb-3">
+    <div class="card bg-secondary text-white border-light">
+        <div class="card-body text-center">
+            <h5 class="card-title">Humidity</h5>
+            <h2 class="display-4"><span id="light-val">--</span> %</h2>
         </div>
+    </div>
+</div>
 
         <div class="card bg-secondary p-3">
             <canvas id="telemetryChart" width="400" height="150"></canvas>
@@ -43,19 +33,19 @@
             data: {
                 labels: [],
                 datasets: [
-                    {
-                        label: 'Temperature (°C)',
-                        data: [],
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.2
-                    },
-                    {
-                        label: 'Light Level (Lux)',
-                        data: [],
-                        borderColor: 'rgb(54, 162, 235)',
-                        tension: 0.2
-                    }
-                ]
+    {
+        label: 'Temperature (°C)',
+        data: [],
+        borderColor: 'rgb(255, 99, 132)',
+        tension: 0.2
+    },
+    {
+        label: 'Humidity (%)',
+        data: [],
+        borderColor: 'rgb(54, 162, 235)',
+        tension: 0.2
+    }
+]
             },
             options: {
                 scales: {
