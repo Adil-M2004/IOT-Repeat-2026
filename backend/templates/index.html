@@ -12,14 +12,24 @@
     <div class="container">
         <h1 class="mb-4 text-center">IoT Real-Time Telemetry Dashboard</h1>
         
-       <div class="col-md-6 mb-3">
-    <div class="card bg-secondary text-white border-light">
-        <div class="card-body text-center">
-            <h5 class="card-title">Humidity</h5>
-            <h2 class="display-4"><span id="light-val">--</span> %</h2>
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                <div class="card bg-secondary text-white border-light">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Temperature</h5>
+                        <h2 class="display-4"><span id="temp-val">--</span> °C</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card bg-secondary text-white border-light">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Humidity</h5>
+                        <h2 class="display-4"><span id="humidity-val">--</span> %</h2>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
         <div class="card bg-secondary p-3">
             <canvas id="telemetryChart" width="400" height="150"></canvas>
@@ -33,19 +43,19 @@
             data: {
                 labels: [],
                 datasets: [
-    {
-        label: 'Temperature (°C)',
-        data: [],
-        borderColor: 'rgb(255, 99, 132)',
-        tension: 0.2
-    },
-    {
-        label: 'Humidity (%)',
-        data: [],
-        borderColor: 'rgb(54, 162, 235)',
-        tension: 0.2
-    }
-]
+                    {
+                        label: 'Temperature (°C)',
+                        data: [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: [],
+                        borderColor: 'rgb(54, 162, 235)',
+                        tension: 0.2
+                    }
+                ]
             },
             options: {
                 scales: {
@@ -60,69 +70,52 @@
 
         async function initDashboard() {
             try {
-                // 1. Fetch valid PAM token from Flask API endpoint
-                const res = await fetch('/api/get-device-token');
-                const tokenResponse = await res.json();
-
-                if (!tokenResponse.token) {
-                    console.error("Failed to retrieve access token from backend:", tokenResponse);
-                    return;
-                }
-
-                // 2. Initialize PubNub with token passed directly
+                // Initialize PubNub with dedicated dashboard UUID
                 const pubnub = new PubNub({
-                    subscribeKey: "{{ config['PUBNUB_SUBSCRIBE_KEY'] }}",
-                    cipherKey: "{{ config['PUBNUB_CIPHER_KEY'] }}",
-                    authToken: tokenResponse.token,
-                    userId: "esp32-sensor-01"
+                    subscribeKey: "{{ config.PUBNUB_SUBSCRIBE_KEY }}",
+                    cipherKey: "{{ config.PUBNUB_CIPHER_KEY }}",
+                    userId: "web-dashboard-client-" + Math.floor(Math.random() * 1000)
                 });
 
-                // Set token explicitly for JS SDK compatibility
-                pubnub.setToken(tokenResponse.token);
-
-                // 3. Add Status and Message Listener
+                // Add Status and Message Listener
                 pubnub.addListener({
                     status: function(statusEvent) {
                         console.log("PubNub Status Event:", statusEvent.category);
-                        if (statusEvent.category === "PNConnectedCategory") {
-                            console.log("Successfully connected and subscribed to channel!");
-                        }
                     },
                     message: function(event) {
                         console.log("Raw Message Received:", event.message);
 
-                        // Support both dictionary object and stringified JSON payloads
                         let data = event.message;
                         if (typeof data === 'string') {
-                            try {
-                                data = JSON.parse(data);
-                            } catch (e) {
-                                console.error("Error parsing message payload:", e);
-                            }
+                            try { data = JSON.parse(data); } catch (e) {}
                         }
 
-                        const timeStr = new Date(data.timestamp * 1000).toLocaleTimeString();
+                        const timeStr = new Date().toLocaleTimeString();
 
-                        // Update text counters
-                        document.getElementById('temp-val').innerText = data.temperature;
-                        document.getElementById('light-val').innerText = data.light_level;
+                        // Update text DOM elements safely
+                        if (data.temperature !== undefined) {
+                            document.getElementById('temp-val').innerText = data.temperature;
+                        }
+                        if (data.humidity !== undefined) {
+                            document.getElementById('humidity-val').innerText = data.humidity;
+                        }
 
-                        // Shift old graph data points if over 10 values
+                        // Keep max 10 graph data points
                         if (telemetryChart.data.labels.length > 10) {
                             telemetryChart.data.labels.shift();
                             telemetryChart.data.datasets[0].data.shift();
                             telemetryChart.data.datasets[1].data.shift();
                         }
 
-                        // Append new reading to graph
+                        // Plot new temperature & humidity readings
                         telemetryChart.data.labels.push(timeStr);
-                        telemetryChart.data.datasets[0].data.push(data.temperature);
-                        telemetryChart.data.datasets[1].data.push(data.light_level);
+                        telemetryChart.data.datasets[0].data.push(data.temperature || 0);
+                        telemetryChart.data.datasets[1].data.push(data.humidity || 0);
                         telemetryChart.update();
                     }
                 });
 
-                // 4. Subscribe to the telemetry stream channel
+                // Subscribe to telemetry stream
                 pubnub.subscribe({
                     channels: ['sensor-data']
                 });
@@ -131,7 +124,7 @@
             }
         }
 
-        initDashboard();
+        window.addEventListener('DOMContentLoaded', initDashboard);
     </script>
 </body>
 </html>
