@@ -125,6 +125,31 @@
         }
 
         window.addEventListener('DOMContentLoaded', initDashboard);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+    // Function to log telemetry on page load
+    async function recordPageVisitReading() {
+        const initialData = {
+            temperature: 22.5, // Default/current value or fetched from live state
+            humidity: 50.0
+        };
+
+        try {
+            await fetch('/api/telemetry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(initialData)
+            });
+            console.log("Initial page load telemetry saved to database.");
+        } catch (err) {
+            console.error("Failed to store telemetry on page load:", err);
+        }
+    }
+
+    recordPageVisitReading();
+    initDashboard();
+});
     </script>
 </body>
 </html>
