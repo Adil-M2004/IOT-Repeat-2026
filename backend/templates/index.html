@@ -4,25 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adil's IRISH HOME Smart Monitor</title>
-    <!-- PubNub SDK -->
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
-    <!-- Chart.js SDK -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #212529; color: #ffffff; text-align: center; padding: 30px; }
-        h1 { margin-bottom: 30px; font-weight: 600; }
-        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; margin: 0 auto 20px auto; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #212529; color: #ffffff; text-align: center; padding: 25px; }
+        h1 { margin-bottom: 25px; font-weight: 600; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; margin: 0 auto 20px auto; }
         .card { background-color: #495057; padding: 20px; border-radius: 8px; border: 1px solid #6c757d; }
         .card h2 { margin: 0 0 10px 0; font-size: 1.2rem; font-weight: 400; color: #e9ecef; }
         .val { font-size: 2.8rem; font-weight: bold; }
         
-        .motion-card { max-width: 900px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; background-color: #495057; padding: 20px 30px; border-radius: 8px; border: 1px solid #6c757d; }
-        .badge { padding: 8px 24px; border-radius: 6px; font-size: 1.5rem; font-weight: bold; }
+        .motion-card { max-width: 1100px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; background-color: #495057; padding: 18px 30px; border-radius: 8px; border: 1px solid #6c757d; }
+        .badge { padding: 8px 24px; border-radius: 6px; font-size: 1.4rem; font-weight: bold; }
         .badge-no { background-color: #343a40; color: #adb5bd; }
         .badge-yes { background-color: #dc3545; color: #ffffff; animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.5; } }
 
-        .chart-card { max-width: 900px; margin: 0 auto; background-color: #495057; padding: 20px; border-radius: 8px; border: 1px solid #6c757d; }
+        /* Side-by-Side Chart and Table Container */
+        .bottom-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; max-width: 1100px; margin: 0 auto; text-align: left; }
+        .chart-card, .table-card { background-color: #495057; padding: 20px; border-radius: 8px; border: 1px solid #6c757d; }
+        .table-card h3 { margin-top: 0; color: #e9ecef; text-align: center; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center; }
+        th, td { padding: 8px 6px; border-bottom: 1px solid #6c757d; }
+        th { background-color: #343a40; color: #00e676; }
     </style>
 </head>
 <body>
@@ -48,131 +53,121 @@
         <div id="motion-badge" class="badge badge-no">NO</div>
     </div>
 
-    <!-- Live Telemetry Graph -->
-    <div class="chart-card">
-        <canvas id="telemetryChart" height="110"></canvas>
+    <!-- Side-by-Side Chart and Database Log Table -->
+    <div class="bottom-grid">
+        <div class="chart-card">
+            <canvas id="telemetryChart" height="150"></canvas>
+        </div>
+
+        <div class="table-card">
+            <h3>Recent Readings Log</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Temp</th>
+                        <th>Hum</th>
+                        <th>Motion</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body">
+                    <tr><td colspan="4">Loading database records...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
-        // 1. Initialize Chart.js Line Graph
+        // Initialize Chart
         const ctx = document.getElementById('telemetryChart').getContext('2d');
         const telemetryChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], 
+                labels: [],
                 datasets: [
-                    {
-                        label: 'Temperature (°C)',
-                        data: [],
-                        borderColor: '#ff6384',
-                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    },
-                    {
-                        label: 'Humidity (%)',
-                        data: [],
-                        borderColor: '#36a2eb',
-                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    }
+                    { label: 'Temp (°C)', data: [], borderColor: '#ff6384', borderWidth: 2, tension: 0.3 },
+                    { label: 'Hum (%)', data: [], borderColor: '#36a2eb', borderWidth: 2, tension: 0.3 }
                 ]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        labels: { color: '#ffffff', font: { size: 14 } }
-                    }
-                },
+                plugins: { legend: { labels: { color: '#ffffff' } } },
                 scales: {
-                    x: {
-                        ticks: { color: '#adb5bd' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
-                    y: {
-                        ticks: { color: '#adb5bd' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    }
+                    x: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                    y: { ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
                 }
             }
         });
 
-        // 2. Initialize PubNub
+        // Function to render table rows
+        function updateTable(readings) {
+            const tbody = document.getElementById('log-table-body');
+            tbody.innerHTML = '';
+            readings.slice(0, 10).forEach(row => {
+                const tr = document.createElement('tr');
+                const motionText = row.motion ? 'YES' : 'NO';
+                tr.innerHTML = `<td>${row.time}</td><td>${row.temperature}°C</td><td>${row.humidity}%</td><td>${motionText}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Fetch Initial History from SQLite Database
+        let tableData = [];
+        fetch('/api/history')
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success' && res.data.length > 0) {
+                    tableData = res.data;
+                    res.data.forEach(item => {
+                        telemetryChart.data.labels.push(item.time);
+                        telemetryChart.data.datasets[0].data.push(item.temperature);
+                        telemetryChart.data.datasets[1].data.push(item.humidity);
+                    });
+                    telemetryChart.update();
+                    updateTable(tableData.reverse());
+                }
+            });
+
+        // PubNub Live Stream
         const pubnub = new PubNub({
-            subscribeKey: "{{ pubnub_sub_key }}" || "sub-c-b486fa6d-5123-4efc-bacc-c70717da02b0",
+            subscribeKey: "{{ pubnub_sub_key }}",
             userId: "web_dashboard_client"
         });
-
-        const maxDataPoints = 20; // Keep the last 20 readings on screen
 
         pubnub.addListener({
             message: function(event) {
                 const data = event.message;
                 const timeLabel = new Date().toLocaleTimeString();
 
-                // Update Temperature Display
-                if (data.temperature !== undefined) {
-                    document.getElementById('temp-val').innerText = data.temperature + " °C";
-                }
-
-                // Update Humidity Display
-                if (data.humidity !== undefined) {
-                    document.getElementById('hum-val').innerText = data.humidity + " %";
-                }
-
-                // Update Motion Badge
+                if (data.temperature !== undefined) document.getElementById('temp-val').innerText = data.temperature + " °C";
+                if (data.humidity !== undefined) document.getElementById('hum-val').innerText = data.humidity + " %";
+                
                 if (data.motion !== undefined) {
                     const badge = document.getElementById('motion-badge');
-                    if (data.motion === true || data.motion === "True") {
-                        badge.innerText = "YES";
-                        badge.className = "badge badge-yes";
-                    } else {
-                        badge.innerText = "NO";
-                        badge.className = "badge badge-no";
-                    }
+                    badge.innerText = data.motion ? "YES" : "NO";
+                    badge.className = data.motion ? "badge badge-yes" : "badge badge-no";
                 }
 
-                // Update Live Chart
+                // Append live reading to chart & table
                 if (data.temperature !== undefined && data.humidity !== undefined) {
                     telemetryChart.data.labels.push(timeLabel);
                     telemetryChart.data.datasets[0].data.push(data.temperature);
                     telemetryChart.data.datasets[1].data.push(data.humidity);
-
-                    // Maintain rolling window
-                    if (telemetryChart.data.labels.length > maxDataPoints) {
+                    if (telemetryChart.data.labels.length > 15) {
                         telemetryChart.data.labels.shift();
                         telemetryChart.data.datasets[0].data.shift();
                         telemetryChart.data.datasets[1].data.shift();
                     }
-
                     telemetryChart.update();
+
+                    // Prepend new row to table log
+                    tableData.unshift({ time: timeLabel, temperature: data.temperature, humidity: data.humidity, motion: data.motion });
+                    updateTable(tableData);
                 }
             }
         });
 
-        pubnub.subscribe({
-            channels: ['telemetry_channel']
-        });
-
-        // Fetch Past Readings from SQLite on Page Load
-     fetch('/api/history')
-    .then(response => response.json())
-    .then(res => {
-        if (res.status === 'success' && res.data.length > 0) {
-            res.data.forEach(item => {
-                telemetryChart.data.labels.push(item.time);
-                telemetryChart.data.datasets[0].data.push(item.temperature);
-                telemetryChart.data.datasets[1].data.push(item.humidity);
-            });
-            telemetryChart.update();
-        }
-    })
-    .catch(err => console.error('Error fetching DB history:', err));
-
+        pubnub.subscribe({ channels: ['telemetry_channel'] });
     </script>
 </body>
 </html>
