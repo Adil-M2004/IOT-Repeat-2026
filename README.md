@@ -15,11 +15,6 @@ An end-to-end IoT environmental monitoring system built on a **Raspberry Pi 5** 
 
 ---
 
-## 🏗️ System Architecture & Data Flow
-
-[ Hardware Sensors ]├─ DHT22 Temp/Humidity (GPIO 4) ──> Linux Kernel Overlay (/sys/bus/iio/...)├─ PIR Motion Sensor   (GPIO 17) ──> gpiozero Interface└─ Breadboard LED      (GPIO 27) ──> Hardware Visual Alert│▼[ Raspberry Pi 5 (Edge Device) ] ──(temp.py)│├──> 1. Publish Live Telemetry (JSON) ──> [ PubNub Cloud Stream ] ──┐│                                                                   │└──> 2. HTTP POST Payload ────────────> [ AWS EC2 Server ]         ││                    │▼                    ▼[ SQLite DB ] ──> [ Web Dashboard ](sensor_data.db)   (Chart.js + Log Table)
----
-
 ## 🔌 Hardware Pin Mapping
 
 [ Hardware Sensors ]
