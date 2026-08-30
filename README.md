@@ -46,9 +46,9 @@ An end-to-end IoT environmental monitoring system built on a **Raspberry Pi 5** 
 
 ## 🗄️ Database Schema
 
-Data is automatically persisted to an SQLite database named `sensor_data.db` located inside the backend repository directory.
+Data is automatically persisted to an SQLite database named `sensor_data.db`, located inside the backend repository directory.
 
-**Table Name:** `readings`
+### Table Name: `readings`
 
 ```sql
 CREATE TABLE IF NOT EXISTS readings (
@@ -58,26 +58,146 @@ CREATE TABLE IF NOT EXISTS readings (
     motion INTEGER NOT NULL,  -- 0 = No Motion, 1 = Motion Detected
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-📡 API EndpointsMethodEndpointDescriptionRequest Payload / ResponseGET/Renders the primary Flask web dashboard (index.html).HTML PagePOST/api/sensor-dataReceives telemetry payloads from Pi 5 and appends to SQLite database.{ "temperature": 22.5, "humidity": 61.8, "motion": true }GET/api/historyFetches the last 20 logged readings chronologically for UI chart & table initialization.{ "status": "success", "data": [...] }🚀 Installation & Setup Guide1. Raspberry Pi 5 Edge ConfigurationA. Enable Hardware Kernel Overlay for DHT22Open /boot/firmware/config.txt on your Raspberry Pi:Bashsudo nano /boot/firmware/config.txt
-Append the following line at the bottom of the file:Ini, TOMLdtoverlay=dht11,gpiopin=4,dht22=1
-Save (Ctrl + O, Enter) and reboot your Pi:Bashsudo reboot
-B. Clone & Configure Edge ScriptBashgit clone [https://github.com/Adil-M2004/IOT-Repeat-2026.git](https://github.com/Adil-M2004/IOT-Repeat-2026.git)
-cd IOT-Repeat-2026
-pip install python-dotenv gpiozero pubnub requests --break-system-packages
-Create a .env configuration file in the project folder:Code snippetPUBNUB_SUBSCRIBE_KEY=sub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBNUB_PUBLISH_KEY=pub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-Run the edge telemetry publisher:Bashpython3 temp.py
-2. AWS EC2 Production Server SetupA. Clone Repository & Install DependenciesLog into your AWS EC2 Ubuntu instance via SSH and configure the environment:Bashgit clone [https://github.com/Adil-M2004/IOT-Repeat-2026.git](https://github.com/Adil-M2004/IOT-Repeat-2026.git)
-cd IOT-Repeat-2026/backend
+```
 
-python3 -m venv venv
-source venv/bin/activate
-pip install flask gunicorn pubnub python-dotenv
-Create a .env file containing your production credentials:Code snippetPUBNUB_SUBSCRIBE_KEY=sub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint           | Description                                                                                | Request Payload / Response                                  |
+| ------ | ------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| `GET`  | `/`                | Renders the primary Flask web dashboard (`index.html`).                                    | HTML Page                                                   |
+| `POST` | `/api/sensor-data` | Receives telemetry payloads from Raspberry Pi 5 and appends them to the SQLite database.   | `{ "temperature": 22.5, "humidity": 61.8, "motion": true }` |
+| `GET`  | `/api/history`     | Fetches the last 20 logged readings chronologically for UI chart and table initialization. | `{ "status": "success", "data": [...] }`                    |
+
+---
+
+# 🚀 Installation & Setup Guide
+
+## 1. Raspberry Pi 5 Edge Configuration
+
+### A. Enable Hardware Kernel Overlay for DHT22
+
+Open `/boot/firmware/config.txt` on your Raspberry Pi:
+
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+Append the following line to the bottom of the file:
+
+```ini
+dtoverlay=dht11,gpiopin=4,dht22=1
+```
+
+Save the file using **Ctrl + O**, press **Enter**, and then reboot your Raspberry Pi:
+
+```bash
+sudo reboot
+```
+
+---
+
+### B. Clone & Configure Edge Script
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Adil-M2004/IOT-Repeat-2026.git
+```
+
+Navigate into the project directory:
+
+```bash
+cd IOT-Repeat-2026
+```
+
+Install the required Python packages:
+
+```bash
+pip install python-dotenv gpiozero pubnub requests --break-system-packages
+```
+
+Create a `.env` configuration file in the project folder:
+
+```env
+PUBNUB_SUBSCRIBE_KEY=sub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
 PUBNUB_PUBLISH_KEY=pub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+> **Important:** Never commit your real PubNub keys or other credentials to GitHub. Add `.env` to your `.gitignore` file.
+
+Run the edge telemetry publisher:
+
+```bash
+python3 temp.py
+```
+
+---
+
+# 2. AWS EC2 Production Server Setup
+
+## A. Clone Repository & Install Dependencies
+
+Log into your AWS EC2 Ubuntu instance via SSH and configure the environment.
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Adil-M2004/IOT-Repeat-2026.git
+```
+
+Navigate to the backend directory:
+
+```bash
+cd IOT-Repeat-2026/backend
+```
+
+Create a Python virtual environment:
+
+```bash
+python3 -m venv venv
+```
+
+Activate the virtual environment:
+
+```bash
+source venv/bin/activate
+```
+
+Install the required dependencies:
+
+```bash
+pip install flask gunicorn pubnub python-dotenv
+```
+
+Create a `.env` file containing your production credentials:
+
+```env
+PUBNUB_SUBSCRIBE_KEY=sub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+PUBNUB_PUBLISH_KEY=pub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
 PUBNUB_SECRET_KEY=sec-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-B. Systemd & Gunicorn DeploymentCreate a systemd unit file to keep Flask running continuously:Bashsudo nano /etc/systemd/system/flaskapp.service
-Insert the following service definition:Ini, TOML[Unit]
+```
+
+> **Security:** Do not upload your `.env` file or production credentials to GitHub.
+
+---
+
+## B. Systemd & Gunicorn Deployment
+
+Create a systemd unit file to keep the Flask application running continuously:
+
+```bash
+sudo nano /etc/systemd/system/flaskapp.service
+```
+
+Insert the following service definition:
+
+```ini
+[Unit]
 Description=Gunicorn instance for Flask IoT App
 After=network.target
 
@@ -89,7 +209,58 @@ Restart=always
 
 [Install]
 WantedBy=multi-user.target
-Enable and start the production backend:Bashsudo systemctl daemon-reload
+```
+
+Save the file, then reload the systemd daemon:
+
+```bash
+sudo systemctl daemon-reload
+```
+
+Start the Flask application:
+
+```bash
 sudo systemctl start flaskapp
+```
+
+Enable the service so that it automatically starts when the server boots:
+
+```bash
 sudo systemctl enable flaskapp
-📸 Dashboard InterfaceThe web interface updates dynamically across three distinct layout components:Metric Cards: High-visibility numerical readouts for live Temperature (°C) and Humidity (%).Motion Badge: Flashes red (YES) on motion event trigger, reverting to dark grey (NO) when idle.Telemetry Graph & Side Table: Chart.js plots rolling temperature/humidity trends while the log table displays timestamped SQLite records.
+```
+
+You can check the status of the application using:
+
+```bash
+sudo systemctl status flaskapp
+```
+
+---
+
+# 📸 Dashboard Interface
+
+The web interface updates dynamically across three distinct layout components:
+
+### 📊 Metric Cards
+
+High-visibility numerical readouts displaying:
+
+* **Temperature (°C)**
+* **Humidity (%)**
+
+These values provide a real-time overview of the environmental conditions detected by the Raspberry Pi 5 sensors.
+
+### 🚨 Motion Badge
+
+Displays the current motion detection state:
+
+* 🔴 **YES** — flashes red when motion is detected.
+* ⚫ **NO** — displays dark grey when no motion is detected.
+
+### 📈 Telemetry Graph & Side Table
+
+The dashboard uses **Chart.js** to plot rolling temperature and humidity trends.
+
+The accompanying log table displays timestamped sensor readings retrieved from the SQLite database.
+
+---
