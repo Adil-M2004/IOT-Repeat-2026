@@ -22,14 +22,21 @@ An end-to-end IoT environmental monitoring system built on a **Raspberry Pi 5** 
 
 ## 🔌 Hardware Pin Mapping
 
-| Hardware Component | Raspberry Pi 5 GPIO Pin | Physical Board Pin | Function |
-| :--- | :--- | :--- | :--- |
-| **DHT22 Sensor** | GPIO 4 | Pin 7 | Temperature & Humidity Data Line |
-| **PIR Motion Sensor** | GPIO 17 | Pin 11 | Digital Motion Input |
-| **LED (Status)** | GPIO 27 | Pin 13 | Anode (+) Motion Indicator |
-| **VCC Pins** | 3.3V / 5V | Pin 1 / Pin 2 | System Power |
-| **Ground (GND)** | GND | Pin 6 / Pin 9 / Pin 14 | System Common Ground |
-
+[ Hardware Sensors ]
+  ├─ DHT22 Temp/Humidity (GPIO 4) ──> Linux Kernel Overlay (/sys/bus/iio/...)
+  ├─ PIR Motion Sensor   (GPIO 17) ──> gpiozero Interface
+  └─ Breadboard LED      (GPIO 27) ──> Hardware Visual Alert
+          │
+          ▼
+ [ Raspberry Pi 5 (Edge Device) ] ──(temp.py)
+          │
+          ├──> 1. Publish Live Telemetry (JSON) ──> [ PubNub Cloud Stream ] ──┐
+          │                                                                   │
+          └──> 2. HTTP POST Payload ────────────> [ AWS EC2 Server ]         │
+                                                         │                    │
+                                                         ▼                    ▼
+                                                  [ SQLite DB ] ──> [ Web Dashboard ]
+                                               (sensor_data.db)   (Chart.js + Log Table)
 ---
 
 ## 🛠️ Software Tech Stack
