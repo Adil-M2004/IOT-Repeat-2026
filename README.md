@@ -34,6 +34,52 @@ An end-to-end IoT environmental monitoring system built on a **Raspberry Pi 5** 
                                                (sensor_data.db)   (Chart.js + Log Table)
 ---
 
++-----------------------------------+
+                       |        RASPBERRY PI 5 GPIO        |
+                       |                                   |
+                       | [ 1] 3.3V            5V [ 2] ----+---> PIR VCC (Red)
+                       | [ 3] GPIO2 (SDA)     5V [ 4]     |
+                       | [ 5] GPIO3 (SCL)    GND [ 6] ----+---> PIR GND (Black)
+                       | [ 7] GPIO4 ---------+--- [ 8]    |
+                       | [ 9] GND            +--- [10]    |
+                       | [11] GPIO17 (PIR) <-+--- [12]    |
+                       | [13] GPIO27 (LED)   +--- [14]    |
+                       | [15] GPIO22         +--- [16]    |
+                       | [17] 3.3V (DHT) ----+--- [18]    |
+                       | [19] ...            +--- [20]    |
+                       +-----------------------------------+
+                                 |         |        |
+                                 |         |        |
+   +-----------------------------+---------+--------+------------------------+
+   |  DIRECT CONNECTION          |         |                                 |
+   |                             |         |                                 |
+   |   +-------------------+     |         |                                 |
+   |   | PIR MOTION SENSOR |     |         |                                 |
+   |   |   [VCC]  [OUT]  [GND]   |         |                                 |
+   |   +----+------+------+------+         |                                 |
+   |        |      |      |                |                                 |
+   +--------+------|------+                |                                 |
+                   |                       |                                 |
+                   +-----------------------+ (GPIO 17)                       |
+                                                                             |
+   +-------------------------------------------------------------------------+
+   |  BREADBOARD CONNECTIONS
+   |
+   |   +-----------------------+            +-------------------+
+   |   |  DHT22 SENSOR         |            |  LED & RESISTOR   |
+   |   |                       |            |                   |
+   |   | [Pin 1] VCC  (3.3V) --+------------+-> Pi Pin 17 (3.3V)|
+   |   | [Pin 2] DATA ---------+------------+-> Pi Pin 7  (GPIO 4)
+   |   | [Pin 3] NC   (Unused) |            |                   |
+   |   | [Pin 4] GND ----------+----+       |                   |
+   |   +-----------------------+    |       |   [+] Anode (Long)
+   |                                |       |    |
+   |                                |       +----+---> Resistor 220Ω ---> Pi Pin 13 (GPIO 27)
+   |                                |            |
+   |                                +------------+---> [-] Cathode (Short) -> Pi Pin 9 / 14 (GND)
+   +---------------------------------------------------------------------------------------------+
+
+   
 ## 🛠️ Software Tech Stack
 
 * **Edge Device (Raspberry Pi 5):** Python 3, `gpiozero`, `lgpio`, `requests`, PubNub Python SDK, Linux IIO Kernel Overlays.
