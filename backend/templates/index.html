@@ -41,23 +41,35 @@
         <div id="motion-badge" class="badge badge-no">NO</div>
     </div>
 
-    <script>
+   <script>
+        // Initialize PubNub
         const pubnub = new PubNub({
-            subscribeKey: "{{ pubnub_sub_key }}",
-            cipherKey: "{{ pubnub_cipher_key }}",
+            subscribeKey: "{{ pubnub_sub_key }}" || "sub-c-b486fa6d-5123-4efc-bacc-c70717da02b0",
             userId: "web_dashboard_client"
         });
 
+        // Console log to verify connection in browser inspect tool
+        console.log("Subscribing to telemetry_channel...");
+
         pubnub.addListener({
+            status: function(statusEvent) {
+                console.log("PubNub Status:", statusEvent.category);
+            },
             message: function(event) {
+                console.log("Received live payload:", event.message);
                 const data = event.message;
 
+                // Update Temperature
                 if (data.temperature !== undefined) {
                     document.getElementById('temp-val').innerText = data.temperature + " °C";
                 }
+
+                // Update Humidity
                 if (data.humidity !== undefined) {
                     document.getElementById('hum-val').innerText = data.humidity + " %";
                 }
+
+                // Update Motion Detection
                 if (data.motion !== undefined) {
                     const badge = document.getElementById('motion-badge');
                     if (data.motion === true || data.motion === "True") {
