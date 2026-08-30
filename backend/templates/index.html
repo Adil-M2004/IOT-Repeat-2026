@@ -157,6 +157,22 @@
         pubnub.subscribe({
             channels: ['telemetry_channel']
         });
+
+        // Fetch Past Readings from SQLite on Page Load
+     fetch('/api/history')
+    .then(response => response.json())
+    .then(res => {
+        if (res.status === 'success' && res.data.length > 0) {
+            res.data.forEach(item => {
+                telemetryChart.data.labels.push(item.time);
+                telemetryChart.data.datasets[0].data.push(item.temperature);
+                telemetryChart.data.datasets[1].data.push(item.humidity);
+            });
+            telemetryChart.update();
+        }
+    })
+    .catch(err => console.error('Error fetching DB history:', err));
+
     </script>
 </body>
 </html>
