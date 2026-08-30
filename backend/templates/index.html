@@ -1,87 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Home Monitor</title>
-    <!-- PubNub JavaScript SDK -->
-    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 40px; }
-        .dashboard { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 500px; margin: 0 auto; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .card h2 { margin: 0 0 10px 0; color: #a0a0a0; font-size: 1.1rem; }
-        .val { font-size: 2.5rem; font-weight: bold; color: #00e676; }
-        .motion-box { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; }
-        .badge { padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 1.2rem; }
-        .badge-no { background-color: #333333; color: #888888; }
-        .badge-yes { background-color: #ff1744; color: #ffffff; animation: pulse 1s infinite alternate; }
-        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1.0; } }
-    </style>
-</head>
-<body>
+from config import Config
+from flask import Flask, jsonify, render_template
+from pubnub.models.consumer.v3.channel import Channel
+from pubnub.pnconfiguration import PNConfiguration
+from pubnub.pubnub import PubNub
 
-    <h1>🏠 Smart Home Dashboard</h1>
+app = Flask(__name__)
+app.config.from_object(Config)
 
-    <div class="dashboard">
-        <!-- Live Environment Telemetry -->
-        <div class="card">
-            <h2>TEMPERATURE</h2>
-            <div id="temp-val" class="val">-- °C</div>
-        </div>
+# Initialize PubNub
+pnconfig = PNConfiguration()
+pnconfig.subscribe_key = app.config["PUBNUB_SUBSCRIBE_KEY"]
+pnconfig.publish_key = app.config["PUBNUB_PUBLISH_KEY"]
+pnconfig.secret_key = app.config["PUBNUB_SECRET_KEY"]
+pnconfig.cipher_key = app.config.get("PUBNUB_CIPHER_KEY")
+pnconfig.uuid = "flask-backend-server"
 
-        <div class="card">
-            <h2>HUMIDITY</h2>
-            <div id="hum-val" class="val">-- %</div>
-        </div>
+pubnub = PubNub(pnconfig)
 
-        <!-- Motion Detection Section -->
-        <div class="card motion-box">
-            <h2>MOTION DETECTED</h2>
-            <div id="motion-badge" class="badge badge-no">NO</div>
-        </div>
-    </div>
 
-    <script>
-        // Initialize PubNub
-        const pubnub = new PubNub({
-            subscribeKey: "{{ pubnub_sub_key }}", // Passed from Flask context or insert sub-c- key directly
-            userId: "web_dashboard_client"
-        });
+@app.route("/")
+def index():
+    # Pass keys directly to index.html frontend
+    return render_template(
+        "index.html",
+        pubnub_sub_key=app.config["PUBNUB_SUBSCRIBE_KEY"],
+        pubnub_cipher_key=app.config.get("PUBNUB_CIPHER_KEY", ""),
+    )
 
-        // Listen for live sensor payload from Pi 5
-        pubnub.addListener({
-            message: function(event) {
-                const data = event.message;
 
-                // Update Temperature
-                if (data.temperature !== undefined) {
-                    document.getElementById('temp-val').innerText = data.temperature + " °C";
-                }
+@app.route("/api/get-device-token", methods=["GET"])
+def get_device_token():
+    try:
+        envelope = (
+            pubnub.grant_token()
+            .ttl(60)
+            .authorized_uuid("esp32-sensor-01")
+            .channels([Channel.id("telemetry_channel").read().write()])
+            .sync()
+        )
 
-                // Update Humidity
-                if (data.humidity !== undefined) {
-                    document.getElementById('hum-val').innerText = data.humidity + " %";
-                }
+        token = envelope.result.token
+        return jsonify({"status": "success", "token": token}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-                // Update Motion Detection (Yes / No)
-                if (data.motion !== undefined) {
-                    const badge = document.getElementById('motion-badge');
-                    if (data.motion === true) {
-                        badge.innerText = "YES";
-                        badge.className = "badge badge-yes";
-                    } else {
-                        badge.innerText = "NO";
-                        badge.className = "badge badge-no";
-                    }
-                }
-            }
-        });
 
-        // Subscribe to channel
-        pubnub.subscribe({
-            channels: ['telemetry_channel']
-        });
-    </script>
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
