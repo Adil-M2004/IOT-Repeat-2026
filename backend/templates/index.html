@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adil's IRISH HOME Smart Monitor</title>
+    <!-- PubNub SDK -->
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <!-- Chart.js SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #212529; color: #ffffff; text-align: center; padding: 30px; }
         h1 { margin-bottom: 30px; font-weight: 600; }
@@ -12,17 +15,21 @@
         .card { background-color: #495057; padding: 20px; border-radius: 8px; border: 1px solid #6c757d; }
         .card h2 { margin: 0 0 10px 0; font-size: 1.2rem; font-weight: 400; color: #e9ecef; }
         .val { font-size: 2.8rem; font-weight: bold; }
-        .motion-card { max-width: 900px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; background-color: #495057; padding: 20px 30px; border-radius: 8px; border: 1px solid #6c757d; }
+        
+        .motion-card { max-width: 900px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; background-color: #495057; padding: 20px 30px; border-radius: 8px; border: 1px solid #6c757d; }
         .badge { padding: 8px 24px; border-radius: 6px; font-size: 1.5rem; font-weight: bold; }
         .badge-no { background-color: #343a40; color: #adb5bd; }
         .badge-yes { background-color: #dc3545; color: #ffffff; animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.5; } }
+
+        .chart-card { max-width: 900px; margin: 0 auto; background-color: #495057; padding: 20px; border-radius: 8px; border: 1px solid #6c757d; }
     </style>
 </head>
 <body>
 
     <h1>Adil's IRISH HOME Temperature, Humidity & Motion</h1>
 
+    <!-- Numerical Telemetry Cards -->
     <div class="grid-container">
         <div class="card">
             <h2>Temperature</h2>
@@ -41,35 +48,83 @@
         <div id="motion-badge" class="badge badge-no">NO</div>
     </div>
 
-   <script>
-        // Initialize PubNub
+    <!-- Live Telemetry Graph -->
+    <div class="chart-card">
+        <canvas id="telemetryChart" height="110"></canvas>
+    </div>
+
+    <script>
+        // 1. Initialize Chart.js Line Graph
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const telemetryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], 
+                datasets: [
+                    {
+                        label: 'Temperature (°C)',
+                        data: [],
+                        borderColor: '#ff6384',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: [],
+                        borderColor: '#36a2eb',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#ffffff', font: { size: 14 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#adb5bd' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#adb5bd' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+
+        // 2. Initialize PubNub
         const pubnub = new PubNub({
             subscribeKey: "{{ pubnub_sub_key }}" || "sub-c-b486fa6d-5123-4efc-bacc-c70717da02b0",
             userId: "web_dashboard_client"
         });
 
-        // Console log to verify connection in browser inspect tool
-        console.log("Subscribing to telemetry_channel...");
+        const maxDataPoints = 20; // Keep the last 20 readings on screen
 
         pubnub.addListener({
-            status: function(statusEvent) {
-                console.log("PubNub Status:", statusEvent.category);
-            },
             message: function(event) {
-                console.log("Received live payload:", event.message);
                 const data = event.message;
+                const timeLabel = new Date().toLocaleTimeString();
 
-                // Update Temperature
+                // Update Temperature Display
                 if (data.temperature !== undefined) {
                     document.getElementById('temp-val').innerText = data.temperature + " °C";
                 }
 
-                // Update Humidity
+                // Update Humidity Display
                 if (data.humidity !== undefined) {
                     document.getElementById('hum-val').innerText = data.humidity + " %";
                 }
 
-                // Update Motion Detection
+                // Update Motion Badge
                 if (data.motion !== undefined) {
                     const badge = document.getElementById('motion-badge');
                     if (data.motion === true || data.motion === "True") {
@@ -79,6 +134,22 @@
                         badge.innerText = "NO";
                         badge.className = "badge badge-no";
                     }
+                }
+
+                // Update Live Chart
+                if (data.temperature !== undefined && data.humidity !== undefined) {
+                    telemetryChart.data.labels.push(timeLabel);
+                    telemetryChart.data.datasets[0].data.push(data.temperature);
+                    telemetryChart.data.datasets[1].data.push(data.humidity);
+
+                    // Maintain rolling window
+                    if (telemetryChart.data.labels.length > maxDataPoints) {
+                        telemetryChart.data.labels.shift();
+                        telemetryChart.data.datasets[0].data.shift();
+                        telemetryChart.data.datasets[1].data.shift();
+                    }
+
+                    telemetryChart.update();
                 }
             }
         });
